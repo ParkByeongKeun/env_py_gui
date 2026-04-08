@@ -7,6 +7,7 @@ from PIL import Image, ImageTk
 import sys
 from wifi_func import get_current_connection_state
 import paho.mqtt.client as mqtt
+from paho.mqtt.enums import CallbackAPIVersion
 import os
 import json
 import math
@@ -144,18 +145,11 @@ class Home(ttk.Frame):
 
         self.lan_state = 'wlan'     
         self.pre_lan_state = 'wlan' 
-        self.client = mqtt.Client()
+        self.client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2)
         self.client.username_pw_set(self.info_device[3])
         self.previous_sensor_data = None  
         self.network_connected = False
         self.data_queue = []
-        try:
-                self.client.connect(THINGSBOARD_HOST, port, 60)
-                self.client.loop_start()
-                self.network_connected = True
-        except:
-                print('No internet Here')
-                self.network_connected = False
         self.start_network_check_thread()
         self.pre_temperature_level = 0
         self.pre_humidity_level = 0
@@ -825,6 +819,17 @@ class Home(ttk.Frame):
         # temp_img_label = Label(sensor_part, image=temp_img, bg='black')
         # temp_img_label.image = temp_img
         # temp_img_label.grid(row=1, column=0)
+
+    def start_thingsboard_mqtt(self):
+        try:
+            self.client.connect(THINGSBOARD_HOST, port, 60)
+            self.client.loop_start()
+            self.network_connected = True
+            self.thingsboard_connection_state = True
+        except Exception:
+            print('No internet Here')
+            self.network_connected = False
+            self.thingsboard_connection_state = False
 
     def schedule_mqtt_data(self):
         self.send_mqtt_data()
