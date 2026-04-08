@@ -590,7 +590,7 @@ class Home(ttk.Frame):
         tvoc_img_label.grid(row=0, column=0)
         tvoc_img_label.bind("<Button-1>", lambda event: event_func(event, sensor_name='Test', sensor_value=self.controller.TVOC))
 
-        tvoc_label = Label(tvoc_part, text='TVOC', bg='black', fg='white', font=('Arial', 15))
+        tvoc_label = Label(tvoc_part, text='TEST', bg='black', fg='white', font=('Arial', 15))
         tvoc_label.grid(row=3, column=0, sticky='NEWS')
         tvoc_label.bind("<Button-1>", lambda event: event_func(event, sensor_name='Test', sensor_value=self.controller.TVOC))
 ###########################################################################################################
