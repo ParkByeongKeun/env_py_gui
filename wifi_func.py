@@ -23,6 +23,19 @@
 import network
 import subprocess
 import re
+import serial
+
+
+def send_wifi_info_to_esp32(ssid, password=''):
+    """CM4에서 Wi-Fi 연결 성공 후 ESP32에 UART로 SSID/비밀번호를 전달한다."""
+    try:
+        ser = serial.Serial('/dev/ttyAMA3', 115200, timeout=1)
+        msg = f'wifi:{ssid}\n{password}\n'
+        ser.write(msg.encode('utf-8'))
+        ser.close()
+        print(f'[ESP32] Wi-Fi 정보 전송 완료: ssid={ssid}')
+    except Exception as e:
+        print(f'[ESP32] Wi-Fi 정보 전송 실패: {e}')
 
 def wifi_Search():
     wifilist = []

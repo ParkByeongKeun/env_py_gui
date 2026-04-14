@@ -114,9 +114,13 @@ class WifiDetailScreen(ttk.Frame):
 ##################################################################################################################
     def wifi_connect(self):
         subprocess.check_output('nmcli dev wifi list', shell=True)
-        cmd = 'nmcli device wifi connect {} password {}'.format(self.controller.wifi_ssid, self.password_entry.get())
-        subprocess.call(cmd, shell=True)
+        ssid = self.controller.wifi_ssid
+        password = self.password_entry.get()
+        cmd = 'nmcli device wifi connect {} password {}'.format(ssid, password)
+        result = subprocess.call(cmd, shell=True)
         sleep(1)
+        if result == 0:
+            wf.send_wifi_info_to_esp32(ssid, password)
         self.show_wifi_list_screen()
         
 ##################################################################################################################

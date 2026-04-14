@@ -412,15 +412,9 @@ class WifiScreen(ttk.Frame):
         # print(self.available_wifi_list[2][0])
         # print('what\'s error from here?')
         # print(self.available_wifi_list[0][0])
-        if len(self.available_wifi_list) == 0:
-            print('여기 들어옴')
-            self.first_label.config(text='')
-            self.second_label.config(text='')
-            self.third_label.config(text='')
-        else:
-            self.first_label.config(text=self.available_wifi_list[0][0])
-            self.second_label.config(text=self.available_wifi_list[1][0])
-            self.third_label.config(text=self.available_wifi_list[2][0])
+        self.first_label.config(text=self.available_wifi_list[0][0] if len(self.available_wifi_list) > 0 else '')
+        self.second_label.config(text=self.available_wifi_list[1][0] if len(self.available_wifi_list) > 1 else '')
+        self.third_label.config(text=self.available_wifi_list[2][0] if len(self.available_wifi_list) > 2 else '')
     
 
     
