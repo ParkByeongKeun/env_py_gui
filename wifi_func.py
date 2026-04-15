@@ -37,6 +37,48 @@ def send_wifi_info_to_esp32(ssid, password=''):
     except Exception as e:
         print(f'[ESP32] Wi-Fi 정보 전송 실패: {e}')
 
+
+def get_connected_wifi_ssid():
+    try:
+        output = subprocess.check_output(
+            ["nmcli", "-t", "-f", "DEVICE,STATE,CONNECTION", "device"],
+            timeout=5
+        ).decode("utf-8")
+        for line in output.strip().split("\n"):
+            parts = line.split(":")
+            if len(parts) >= 3 and parts[0] == "wlan0" and parts[1] == "connected":
+                return parts[2]
+    except Exception:
+        pass
+    return None
+
+
+def get_saved_wifi_password(ssid):
+    try:
+        output = subprocess.check_output(
+            ["nmcli", "-s", "-g", "802-11-wireless-security.psk",
+             "connection", "show", ssid],
+            timeout=5
+        ).decode("utf-8").strip()
+        return output
+    except Exception:
+        return ''
+
+
+_last_sent_ssid = None
+
+def notify_esp32_if_wifi_connected():
+    global _last_sent_ssid
+    ssid = get_connected_wifi_ssid()
+    if ssid is None:
+        _last_sent_ssid = None
+        return
+    if ssid == _last_sent_ssid:
+        return
+    password = get_saved_wifi_password(ssid)
+    send_wifi_info_to_esp32(ssid, password)
+    _last_sent_ssid = ssid
+
 def wifi_Search():
     wifilist = []
     cells = wifi.Cell.all('wlan0')

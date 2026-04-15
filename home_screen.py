@@ -5,7 +5,7 @@ from datetime import datetime
 from time import strftime
 from PIL import Image, ImageTk
 import sys
-from wifi_func import get_current_connection_state
+from wifi_func import get_current_connection_state, notify_esp32_if_wifi_connected
 import paho.mqtt.client as mqtt
 from paho.mqtt.enums import CallbackAPIVersion
 import os
@@ -942,6 +942,7 @@ class Home(ttk.Frame):
                         self.wifi_button.config(image=self.photo_ethernet_connection_status, command=self.show_ethernet)
                         self.wifi_button.image = self.photo_ethernet_connection_status
 
+                notify_esp32_if_wifi_connected()
                 self.pre_lan_state = 'ethernet'
         elif connection_state[0] == False and connection_state[1] == True:              # wifi 연결
                 self.lan_state = 'wlan'
@@ -957,6 +958,7 @@ class Home(ttk.Frame):
                         self.wifi_button.config(image=self.photo_wifi_connection_status, command=self.show_wifi)
                         self.wifi_button.image = self.photo_wifi_connection_status
                         
+                notify_esp32_if_wifi_connected()
                 self.pre_lan_state = 'wlan'
         elif connection_state[0] == False and connection_state[1] == False:
                 self.lan_state = 'none'
