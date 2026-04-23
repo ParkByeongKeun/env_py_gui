@@ -22,6 +22,9 @@ import threading
 
 THINGSBOARD_HOST = "210.117.143.37"
 
+# 오프라인 텔레메트리 큐 상한 (JSON UTF-8 바이트 합계 기준)
+_TELEMETRY_QUEUE_MAX_BYTES = 500 * 1024 * 1024
+
 # # DB
 # my_db = mysql.connector.connect(
 #     host= THINGSBOARD_HOST,          # MySQL 서버 주소
@@ -149,7 +152,9 @@ class Home(ttk.Frame):
         self.client.username_pw_set(self.info_device[3])
         self.previous_sensor_data = None  
         self.network_connected = False
-        self.data_queue = []
+        self.data_queue = []  # (sensor_data, wire_json_utf8_bytes)
+        self._data_queue_bytes = 0
+        self._data_queue_lock = threading.RLock()
         self.start_network_check_thread()
         self.pre_temperature_level = 0
         self.pre_humidity_level = 0
@@ -837,19 +842,33 @@ class Home(ttk.Frame):
         self.mqtt_timer.daemon = True
         self.mqtt_timer.start()
 
+    def _telemetry_wire_bytes(self, sensor_data):
+        return len(json.dumps(sensor_data, ensure_ascii=False).encode('utf-8'))
+
     def save_to_memory(self, sensor_data):
         try:
-            self.data_queue.append(sensor_data)
-        #     print(f"메모리에 데이터 저장: {sensor_data['ts']}")
+            wire = self._telemetry_wire_bytes(sensor_data)
+            with self._data_queue_lock:
+                while (
+                    self._data_queue_bytes + wire > _TELEMETRY_QUEUE_MAX_BYTES
+                    and self.data_queue
+                ):
+                    _, old_b = self.data_queue.pop(0)
+                    self._data_queue_bytes -= old_b
+                self.data_queue.append((sensor_data, wire))
+                self._data_queue_bytes += wire
         except Exception as e:
             print(f"메모리 저장 실패: {e}")
 
     def read_from_memory(self):
-        return self.data_queue
+        with self._data_queue_lock:
+            return list(self.data_queue)
 
     def delete_from_memory(self, index):
         try:
-            self.data_queue.pop(index)
+            with self._data_queue_lock:
+                _, b = self.data_queue.pop(index)
+                self._data_queue_bytes -= b
         except Exception as e:
             print(f"메모리 데이터 삭제 실패: {e}")
 
@@ -874,16 +893,16 @@ class Home(ttk.Frame):
         thread.start()
 
     def send_queued_data(self):
-        queued_data = self.read_from_memory()
-        for i in range(len(queued_data) - 1, -1, -1):  # 역순으로 처리하여 삭제 시 인덱스 문제 방지
-            try:
-                sensor_data = queued_data[i]
-                self.client.publish('v1/devices/me/telemetry', json.dumps(sensor_data), 1)
-                self.delete_from_memory(i)
-                # print(f"큐 데이터 전송 성공: {sensor_data['ts']}")
-            except Exception as e:
-                print(f"큐 데이터 전송 실패: {e}")
-                break  # 전송 실패 시 중단
+        with self._data_queue_lock:
+            for i in range(len(self.data_queue) - 1, -1, -1):
+                try:
+                    sensor_data, _ = self.data_queue[i]
+                    self.client.publish('v1/devices/me/telemetry', json.dumps(sensor_data), 1)
+                    _, b = self.data_queue.pop(i)
+                    self._data_queue_bytes -= b
+                except Exception as e:
+                    print(f"큐 데이터 전송 실패: {e}")
+                    break
 
 
     def set_horizontal_separator_image(self, frame, column):
