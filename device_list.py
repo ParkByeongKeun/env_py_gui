@@ -47,3 +47,9 @@ device_info = [
 ]
 
 
+def get_device_by_id(device_id):
+    """DEVICE_NUM은 리스트 인덱스가 아니라 첫 칸 장치 ID."""
+    for row in device_info:
+        if row[0] == device_id:
+            return row
+    raise KeyError(f'device_list에 장치 ID {device_id}가 없습니다.')

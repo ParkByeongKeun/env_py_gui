@@ -12,7 +12,7 @@ import os
 import json
 import math
 from sensor_list import SENSOR_DICT
-from device_list import device_info
+from device_list import get_device_by_id
 from VERSION_INFO import CURRENT_VERSION
 from element_screen import Element
 from time import sleep
@@ -64,7 +64,7 @@ class Home(ttk.Frame):
         self.controller = controller
         self.show_wifi = show_wifi
         self.show_ethernet = show_ethernet
-        self.info_device = device_info[self.controller.device_number-1]
+        self.info_device = get_device_by_id(self.controller.device_number)
         self.thingsboard_connection_state = False
         self.pre_term = self.controller.send_term
         self.Board_Serial_Num = ''
@@ -1108,7 +1108,7 @@ class Home(ttk.Frame):
                         "S_0_12":round(float(self.avg_H2S/self.avg_count_H2S),2) if self.avg_count_H2S != 0 else self.prev_H2S,
                         "S_0_13":round(float(self.avg_NH3/self.avg_count_NH3),2) if self.avg_count_NH3 != 0 else self.prev_NH3,
                         "S_0_14":round(float(self.avg_LIGHT/self.avg_count_LIGHT),2) if self.avg_count_LIGHT != 0 else self.prev_LIGHT,
-                        "S_0_15":round(float(self.avg_O3/self.avg_count_O3),2) if self.avg_count_O3 != 0 else self.prev_O3,
+                        "S_0_15":round(float(self.avg_O3/self.avg_count_O3),4) if self.avg_count_O3 != 0 else self.prev_O3,
                         "S_0_16":int(self.avg_PM1/self.avg_count_PM1) if self.avg_count_PM1 != 0 else self.prev_PM1,
                         "ver":CURRENT_VERSION,
                         }
