@@ -1,3 +1,5 @@
+import queue
+import threading
 import tkinter as tk
 from tkinter import *
 from tkinter import ttk
@@ -17,6 +19,9 @@ class WifiScreen(ttk.Frame):
         self.show_home = show_home
         self.show_wifi_detail = show_wifi_detail
         self.controller = controller
+        self._wifi_status_queue = queue.Queue(maxsize=1)
+        self._wifi_status_stop = threading.Event()
+        self._wifi_status_worker_started = False
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=4)
         self.rowconfigure(1, weight=17)
@@ -457,24 +462,66 @@ class WifiScreen(ttk.Frame):
     
     
     def get_current_wifi(self):
-        
-        self.current_wifi_list = wf.get_current_wifi_info()
-        
-        
-        if self.current_wifi_list == None:
+        """Wi-Fi 조회 스레드를 한 번만 시작한다."""
+        if self._wifi_status_worker_started:
+            return
+        self._wifi_status_worker_started = True
+        threading.Thread(
+            target=self._wifi_status_worker,
+            name='wifi-status-worker',
+            daemon=True,
+        ).start()
+        self.after(100, self._poll_wifi_status)
+
+    def _wifi_status_worker(self):
+        """Tkinter를 건드리지 않고 조회 결과만 Queue로 전달한다."""
+        while not self._wifi_status_stop.is_set():
+            try:
+                info = wf.get_current_wifi_info()
+            except Exception:
+                info = None
+
+            try:
+                self._wifi_status_queue.put_nowait(info)
+            except queue.Full:
+                # 화면이 바쁠 때는 오래된 값 대신 최신 값만 남긴다.
+                try:
+                    self._wifi_status_queue.get_nowait()
+                except queue.Empty:
+                    pass
+                try:
+                    self._wifi_status_queue.put_nowait(info)
+                except queue.Full:
+                    pass
+
+            self._wifi_status_stop.wait(3)
+
+    def _poll_wifi_status(self):
+        """메인 스레드에서 Queue를 읽어 Tkinter 위젯을 갱신한다."""
+        has_result = False
+        info = None
+        while True:
+            try:
+                info = self._wifi_status_queue.get_nowait()
+                has_result = True
+            except queue.Empty:
+                break
+
+        if has_result:
+            self._show_current_wifi(info)
+
+        if not self._wifi_status_stop.is_set():
+            self.after(250, self._poll_wifi_status)
+
+    def _show_current_wifi(self, info):
+        self.current_wifi_list = info
+        if info is None:
             self.current_wifi_label.config(text='No Wifi...')
             self.current_wifi_image.config(image=self.non_connection_signal)
             self.current_wifi_image.image = self.non_connection_signal
         else:
             self.current_wifi_image.config(image=self.good_wifi_signal)
             self.current_wifi_image.image = self.good_wifi_signal
-            self.current_wifi_label.config(text=self.current_wifi_list[0]) 
-    
-        # 꼭 고쳐줘야 한다.         self.current_wifi_list[1] 이 신호 세기(str값)니깐 그에 따라 고쳐줘야한다. 
-        # self.current_wifi_image.config()
-        # print('self.current wifi list')
-        # print(self.current_wifi_list)
-        
-        self.current_wifi_label.after(3000, self.get_current_wifi)
+            self.current_wifi_label.config(text=info[0])
         
 
